@@ -1,138 +1,142 @@
+// Modifications Log:
+// 1. Reverted all SQL parameter placeholders back to "?".
+// 2. Now both registration and login queries use the "?" placeholder consistently.
+// 3. Detailed debug logs remain to show query results and password comparisons.
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { queryDatabase } = require('../models/db');
 require('dotenv').config();
 
-// Função para gerar o token de acesso (válido por 15 minutos)
+// Function to generate access token (valid for 15 minutes)
 function generateAccessToken(userId) {
-    return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '15m' });
 }
 
-// Função para gerar o refresh token (válido por 7 dias)
+// Function to generate refresh token (valid for 7 days)
 function generateRefreshToken(userId) {
-    return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 }
 
-// 📌 **Registro de Usuário**
+// Register User
 exports.register = async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
-
-        if (!name || !email || !password) {
-            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-        }
-
-        // Usa COUNT(*) para checar se o e-mail já existe
-        const existingUser = await queryDatabase("SELECT COUNT(*) as count FROM users WHERE email = ?", [email]);
-
-        // Converte o resultado para número (caso seja string) e checa se é maior que 0
-        if (existingUser.length > 0 && parseInt(existingUser[0].count, 10) > 0) {
-            return res.status(400).json({ error: 'Email já cadastrado' });
-        }
-
-        // Gera o hash da senha
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const userId = uuidv4();
-
-        // Insere o novo usuário no banco
-        await queryDatabase(
-            "INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)",
-            [userId, name, email, hashedPassword]
-        );
-
-        // Gera os tokens JWT
-        const accessToken = generateAccessToken(userId);
-        const refreshToken = generateRefreshToken(userId);
-
-        res.status(201).json({
-            message: 'Usuário cadastrado com sucesso',
-            accessToken,
-            refreshToken
-        });
-
-    } catch (error) {
-        console.error('❌ Erro no registro:', error);
-        if (error.message.includes('UNIQUE constraint failed: users.email')) {
-            return res.status(400).json({ error: 'Email já cadastrado' });
-        }
-        res.status(500).json({ error: 'Erro interno do servidor' });
+  try {
+    let { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
     }
+    // Force email to lowercase and trim spaces
+    email = email.trim().toLowerCase();
+
+    // Check if the email already exists using "?" placeholders.
+    const existingUserResult = await queryDatabase(
+      "SELECT COUNT(*) as count FROM users WHERE email = ?",
+      [email]
+    );
+    console.log("🔍 [REGISTER] Query (COUNT) result:", existingUserResult);
+    const existingUserCount =
+      existingUserResult && existingUserResult[0] ? Number(existingUserResult[0].count) : 0;
+    if (existingUserCount > 0) {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userId = uuidv4();
+    // Insert the new user into the database using "?" placeholders.
+    await queryDatabase(
+      "INSERT INTO users (id, name, email, password, role, subscription_status) VALUES (?, ?, ?, ?, ?, ?)",
+      [userId, name, email, hashedPassword, 'user', 'pending']
+    );
+    // Generate tokens
+    const accessToken = generateAccessToken(userId);
+    const refreshToken = generateRefreshToken(userId);
+    return res.status(201).json({
+      message: 'Usuário cadastrado com sucesso',
+      accessToken,
+      refreshToken
+    });
+  } catch (error) {
+    console.error('❌ Erro no registro:', error);
+    if (error.message.includes('UNIQUE constraint failed: users.email')) {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
 };
 
-
-
-
-
-
-// 📌 **Login do Usuário**
+// Login User
 exports.login = async (req, res) => {
-    try {
-      const { email, password } = req.body;
-      console.log("🔍 Dados recebidos:", email, password);
-  
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-      }
-  
-      // Executa a query para buscar o usuário
-      const queryResult = await queryDatabase("SELECT * FROM users WHERE email = ?", [email]);
-      console.log("🔍 Resultado da query:", queryResult);
-  
-      // Verifica se a query retornou dados no formato esperado
-      if (
-        !queryResult ||
-        queryResult.length === 0 ||
-        !queryResult[0].results ||
-        queryResult[0].results.length === 0
-      ) {
-        return res.status(400).json({ error: 'Credenciais inválidas' });
-      }
-  
-      // Extrai a lista de usuários a partir do objeto retornado
-      const users = queryResult[0].results;
-      const user = users[0];
-      console.log("🔍 user.password no BD:", user.password);
-  
-      // Compara a senha enviada com a senha armazenada (já hashada)
-      const validPassword = await bcrypt.compare(password, user.password);
-      if (!validPassword) {
-        return res.status(400).json({ error: 'Credenciais inválidas' });
-      }
-  
-      // Gera os tokens JWT
-      const accessToken = generateAccessToken(user.id);
-      const refreshToken = generateRefreshToken(user.id);
-  
-      return res.json({ accessToken, refreshToken });
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return res.status(500).json({ error: 'Erro interno do servidor' });
+  try {
+    let { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
     }
-  };
-  
-  
+    // Force email to lowercase and trim spaces
+    email = email.trim().toLowerCase();
 
-// 📌 **Refresh Token (Renovação de Sessão)**
-exports.refreshToken = async (req, res) => {
-    try {
-      const { refreshToken } = req.body;
-      if (!refreshToken) {
-        return res.status(401).json({ error: 'Token ausente' });
-      }
-  
-      // Verifica se o refresh token é válido usando a chave JWT_REFRESH_SECRET
-      jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
-        if (err) {
-          return res.status(403).json({ error: 'Token inválido ou expirado' });
-        }
-        // Se válido, gera um novo access token com base no ID do usuário decodificado
-        const newAccessToken = generateAccessToken(decoded.id);
-        return res.json({ accessToken: newAccessToken });
-      });
-    } catch (error) {
-      console.error('Erro no refresh token:', error);
-      return res.status(500).json({ error: 'Erro interno do servidor' });
+    // Fetch the user using "?" placeholders.
+    const queryResult = await queryDatabase("SELECT * FROM users WHERE email = ?", [email]);
+    console.log("🔍 [LOGIN] Query result:", queryResult);
+    if (!queryResult || queryResult.length === 0) {
+      console.log("🔍 [LOGIN] No user found for email:", email);
+      return res.status(400).json({ error: 'Credenciais inválidas' });
     }
-  };
-  
+    const user = queryResult[0];
+    console.log("🔍 [LOGIN] User found:", user);
+    console.log("🔍 [LOGIN] Comparing passwords: Input:", password, "Stored Hash:", user.password);
+    if (!user.password) {
+      return res.status(500).json({ error: 'Erro ao buscar senha do usuário' });
+    }
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      console.log("🔍 [LOGIN] Password mismatch.");
+      return res.status(400).json({ error: 'Credenciais inválidas' });
+    }
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+    return res.json({ accessToken, refreshToken });
+  } catch (error) {
+    console.error("Erro no login:", error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
+
+// Refresh Token (Session Renewal)
+exports.refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Token ausente' });
+    }
+    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ error: 'Token inválido ou expirado' });
+      }
+      const newAccessToken = generateAccessToken(decoded.id);
+      return res.json({ accessToken: newAccessToken });
+    });
+  } catch (error) {
+    console.error('Erro no refresh token:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
+
+// Delete User (optional)
+exports.delete = async (req, res) => {
+  try {
+    let { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email é obrigatório' });
+    }
+    email = email.trim().toLowerCase();
+    const existingUser = await queryDatabase("SELECT * FROM users WHERE email = ?", [email]);
+    if (!existingUser || existingUser.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    await queryDatabase("DELETE FROM users WHERE email = ?", [email]);
+    return res.status(200).json({ message: 'Usuário excluído com sucesso' });
+  } catch (error) {
+    console.error(`❌ Erro ao excluir usuário: ${error}`);
+    return res.status(500).json({ error: 'Erro ao excluir usuário' });
+  }
+};

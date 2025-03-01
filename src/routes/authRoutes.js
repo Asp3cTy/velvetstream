@@ -4,6 +4,7 @@ const authController = require('../controllers/authController');
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
-router.post('/refresh', authController.refreshToken); // Nova rota para refresh token
+router.post('/refresh-token', authController.refreshToken);
+router.delete('/delete', authController.delete);
 
 module.exports = router;

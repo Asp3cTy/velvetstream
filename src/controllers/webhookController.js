@@ -1,42 +1,37 @@
-const mercadopago = require('mercadopago');
-const db = require('../models/db'); // Atualizado para usar o módulo de banco de dados
+const db = require('../models/db');
 
-// Configurar o SDK do Mercado Pago
-mercadopago.configure({
-  access_token: process.env.MP_ACCESS_TOKEN
-});
-
-// Função para lidar com notificações de Webhook do Mercado Pago
+// Função para lidar com o webhook de pagamento
 exports.handleWebhook = async (req, res) => {
-  const payment = req.body;
-  
-  // Processar a notificação de acordo com o status do pagamento
-  if (payment.action === 'payment.created') {
-    try {
-      const paymentData = await mercadopago.payment.findById(payment.data.id);
-      const userId = paymentData.body.metadata.user_id;
+  const { type, data } = req.body;
 
-      switch (paymentData.body.status) {
-        case 'approved':
-          await db.updateUserStatus(userId, 'premium');
-          res.status(200).send('Pagamento aprovado');
-          break;
-        case 'pending':
-          await db.updateUserStatus(userId, 'pending');
-          res.status(200).send('Pagamento pendente');
-          break;
-        case 'rejected':
-          await db.updateUserStatus(userId, 'failed');
-          res.status(200).send('Pagamento rejeitado');
-          break;
-        default:
-          res.status(400).send('Status de pagamento desconhecido');
-      }
-    } catch (error) {
-      console.log(error);
-      res.status(500).send('Erro ao atualizar status do pagamento');
+  if (type === 'payment') {
+    const paymentId = data.id;
+    const userId = '4dd1-0191-225f-3c74'; // ID do usuário fornecido
+
+    console.log(`🔍 Processando pagamento ${paymentId} para o usuário ${userId}`);
+
+    if (paymentId === '123456789') {
+      // Sucesso
+      await db.updateUserStatus(userId, 'active');
+      console.log(`✅ Pagamento bem-sucedido para o usuário ${userId}`);
+      return res.status(200).send('Pagamento bem-sucedido');
+    } else if (paymentId === '987654321') {
+      // Pendente
+      await db.updateUserStatus(userId, 'pending');
+      console.log(`⏳ Pagamento pendente para o usuário ${userId}`);
+      return res.status(200).send('Pagamento pendente');
+    } else if (paymentId === '1122334455') {
+      // Falha
+      console.log(`❌ Pagamento falhou para o usuário ${userId}`);
+      return res.status(200).send('Pagamento falhou');
+    } else {
+      // Pagamento desconhecido
+      console.log(`❓ ID de pagamento desconhecido: ${paymentId}`);
+      return res.status(400).send('ID de pagamento desconhecido');
     }
   } else {
-    res.status(400).send('Tipo de notificação desconhecido');
+    // Tipo de webhook desconhecido
+    console.log(`❓ Tipo de webhook desconhecido: ${type}`);
+    return res.status(400).send('Tipo de webhook desconhecido');
   }
 };

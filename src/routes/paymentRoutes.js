@@ -6,5 +6,6 @@ router.post('/create_preference', paymentController.createPreference);
 router.get('/success', paymentController.success);
 router.get('/pending', paymentController.pending);
 router.get('/failure', paymentController.failure);
+router.post('/cancel', paymentController.cancelSubscription);
 
 module.exports = router;
