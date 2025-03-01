@@ -1,10 +1,16 @@
-// src/app.js
 const express = require('express');
 require('dotenv').config();
 
 const app = express();
 
 app.use(express.json());
+
+// Adicione as rotas de pagamento e webhook
+const paymentRoutes = require('./routes/paymentRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
+
+app.use('/api/payments', paymentRoutes);
+app.use('/', webhookRoutes);
 
 // Registre apenas as rotas restantes (auth, content, etc.)
 const authRoutes = require('./routes/authRoutes');
