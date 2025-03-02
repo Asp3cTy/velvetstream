@@ -1,34 +1,25 @@
-// Modifications Log:
-// 1. Reverted all SQL parameter placeholders back to "?".
-// 2. Now both registration and login queries use the "?" placeholder consistently.
-// 3. Detailed debug logs remain to show query results and password comparisons.
+// authController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { queryDatabase } = require('../models/db');
 require('dotenv').config();
 
-// Function to generate access token (valid for 15 minutes)
 function generateAccessToken(userId) {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '15m' });
 }
 
-// Function to generate refresh token (valid for 7 days)
 function generateRefreshToken(userId) {
   return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 }
 
-// Register User
 exports.register = async (req, res) => {
   try {
     let { name, email, password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
     }
-    // Force email to lowercase and trim spaces
     email = email.trim().toLowerCase();
-
-    // Check if the email already exists using "?" placeholders.
     const existingUserResult = await queryDatabase(
       "SELECT COUNT(*) as count FROM users WHERE email = ?",
       [email]
@@ -39,15 +30,12 @@ exports.register = async (req, res) => {
     if (existingUserCount > 0) {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
-    // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = uuidv4();
-    // Insert the new user into the database using "?" placeholders.
     await queryDatabase(
       "INSERT INTO users (id, name, email, password, role, subscription_status) VALUES (?, ?, ?, ?, ?, ?)",
       [userId, name, email, hashedPassword, 'user', 'pending']
     );
-    // Generate tokens
     const accessToken = generateAccessToken(userId);
     const refreshToken = generateRefreshToken(userId);
     return res.status(201).json({
@@ -64,17 +52,13 @@ exports.register = async (req, res) => {
   }
 };
 
-// Login User
 exports.login = async (req, res) => {
   try {
     let { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
     }
-    // Force email to lowercase and trim spaces
     email = email.trim().toLowerCase();
-
-    // Fetch the user using "?" placeholders.
     const queryResult = await queryDatabase("SELECT * FROM users WHERE email = ?", [email]);
     console.log("🔍 [LOGIN] Query result:", queryResult);
     if (!queryResult || queryResult.length === 0) {
@@ -101,7 +85,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// Refresh Token (Session Renewal)
 exports.refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -121,7 +104,6 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
-// Delete User (optional)
 exports.delete = async (req, res) => {
   try {
     let { email } = req.body;
@@ -138,5 +120,72 @@ exports.delete = async (req, res) => {
   } catch (error) {
     console.error(`❌ Erro ao excluir usuário: ${error}`);
     return res.status(500).json({ error: 'Erro ao excluir usuário' });
+  }
+};
+
+exports.logout = async (req, res) => {
+  return res.json({ message: "Logout realizado com sucesso" });
+};
+
+/**
+ * Endpoint para solicitar recuperação de senha.
+ * Se o email existir, gera um token de reset com expiração curta.
+ */
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Email é obrigatório" });
+    }
+    // Procura o usuário pelo email usando queryDatabase
+    const userResult = await queryDatabase("SELECT * FROM users WHERE email = ?", [email.trim().toLowerCase()]);
+    const user = userResult && userResult.length > 0 ? userResult[0] : null;
+    if (!user) {
+      // Para segurança, não informe se o usuário não existe
+      return res.status(200).json({ message: "Se o email existir, instruções serão enviadas." });
+    }
+    // Gera um token de reset (usando o user.id como payload)
+    const resetToken = jwt.sign(
+      { id: user.id },
+      process.env.JWT_RESET_SECRET,
+      { expiresIn: process.env.JWT_RESET_EXPIRES_IN || "1h" }
+    );
+    // Em produção, você enviaria esse token por email para o usuário.
+    // Aqui, para testes, retornamos o token na resposta.
+    return res.json({
+      message: "Token de recuperação de senha gerado. Use-o para resetar a senha.",
+      resetToken
+    });
+  } catch (error) {
+    console.error("Erro em forgotPassword:", error);
+    res.status(500).json({ error: "Erro ao processar a recuperação de senha" });
+  }
+};
+
+/**
+ * Endpoint para resetar a senha.
+ * Recebe o token de reset e a nova senha, verifica o token e atualiza a senha do usuário.
+ */
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: "Token e nova senha são obrigatórios" });
+    }
+    // Verifica o token de reset
+    jwt.verify(token, process.env.JWT_RESET_SECRET, async (err, decoded) => {
+      if (err) {
+        return res.status(400).json({ error: "Token inválido ou expirado" });
+      }
+      const userId = decoded.id;
+      // Gera hash da nova senha
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      // Atualiza a senha do usuário no banco
+      await queryDatabase("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, userId]);
+      return res.json({ message: "Senha resetada com sucesso" });
+    });
+  } catch (error) {
+    console.error("Erro em resetPassword:", error);
+    res.status(500).json({ error: "Erro ao resetar a senha" });
   }
 };

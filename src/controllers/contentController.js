@@ -1,95 +1,97 @@
 const { queryDatabase } = require('../models/db');
 
-// 1. Listar todos os vídeos para a home (ordenados pela data de criação, mais recentes primeiro)
+/**
+ * Retorna destaques e recomendações para a página inicial.
+ * Exemplo: retorna os 10 vídeos mais recentes.
+ */
 exports.getHomeContent = async (req, res) => {
   try {
-    const videos = await queryDatabase("SELECT * FROM videos ORDER BY created_at DESC", []);
-    return res.json({ videos });
+    const videos = await queryDatabase(
+      "SELECT id, title, description, created_at FROM videos ORDER BY created_at DESC LIMIT 10"
+    );
+    res.json({ videos });
   } catch (error) {
-    console.error("Erro ao obter conteúdo home:", error);
-    return res.status(500).json({ error: "Erro interno do servidor" });
+    console.error("Erro ao buscar conteúdo home:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
 
-// 2. Buscar vídeos por título (utilizando parâmetro de query "q")
+/**
+ * Pesquisa por filmes/séries usando o parâmetro 'query'.
+ */
 exports.searchContent = async (req, res) => {
   try {
-    const { q } = req.query;
-    if (!q) {
-      return res.status(400).json({ error: "Parâmetro de busca 'q' é obrigatório" });
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ error: "Parâmetro de busca 'query' é obrigatório" });
     }
-    // Usa LIKE para buscar vídeos cujo título contenha o termo pesquisado
     const videos = await queryDatabase(
-      "SELECT * FROM videos WHERE title LIKE ? ORDER BY created_at DESC",
-      [`%${q}%`]
+      "SELECT id, title, description, created_at FROM videos WHERE title LIKE ? ORDER BY created_at DESC",
+      [`%${query}%`]
     );
-    return res.json({ videos });
+    res.json({ videos });
   } catch (error) {
-    console.error("Erro ao buscar conteúdo:", error);
-    return res.status(500).json({ error: "Erro interno do servidor" });
+    console.error("Erro na pesquisa de conteúdo:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
 
-// 3. Obter detalhes de um vídeo específico pelo ID
+/**
+ * Retorna detalhes de um filme/série (sinopse, trailer, avaliações, etc.).
+ */
 exports.getContentDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: "ID é obrigatório" });
-    }
-    const detailsResult = await queryDatabase("SELECT * FROM videos WHERE id = ?", [id]);
-    // Supondo que a função queryDatabase retorne os dados de forma aninhada (por exemplo, em results)
-    // Se a estrutura for diferente, ajuste conforme necessário.
-    let video;
-    if (detailsResult.length > 0 && detailsResult[0].results && detailsResult[0].results.length > 0) {
-      video = detailsResult[0].results[0];
-    } else {
-      // Caso a queryDatabase já retorne diretamente um array
-      video = detailsResult[0];
-    }
-    if (!video) {
+    const videoResult = await queryDatabase("SELECT * FROM videos WHERE id = ?", [id]);
+    if (!videoResult || videoResult.length === 0) {
       return res.status(404).json({ error: "Conteúdo não encontrado" });
     }
-    return res.json({ video });
+    res.json({ video: videoResult[0] });
   } catch (error) {
-    console.error("Erro ao obter detalhes do conteúdo:", error);
-    return res.status(500).json({ error: "Erro interno do servidor" });
+    console.error("Erro ao buscar detalhes do conteúdo:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
 
-// 4. Listar temporadas de uma série (assumindo que há uma tabela "seasons" com, por exemplo, os campos season_number e series_id)
+/**
+ * Retorna as temporadas de uma série.
+ * O parâmetro id representa o id da série.
+ */
 exports.getSeriesSeasons = async (req, res) => {
   try {
-    const { id } = req.params; // 'id' aqui se refere ao ID da série
-    if (!id) {
-      return res.status(400).json({ error: "ID da série é obrigatório" });
-    }
+    const { id } = req.params;
     const seasons = await queryDatabase(
-      "SELECT * FROM seasons WHERE series_id = ? ORDER BY season_number ASC",
+      "SELECT id, season_number, created_at FROM seasons WHERE series_id = ? ORDER BY season_number ASC",
       [id]
     );
-    return res.json({ seasons });
+    res.json({ seasons });
   } catch (error) {
-    console.error("Erro ao obter temporadas:", error);
-    return res.status(500).json({ error: "Erro interno do servidor" });
+    console.error("Erro ao buscar temporadas:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
 
-// 5. Listar episódios de uma temporada específica de uma série
-exports.getSeasonEpisodes = async (req, res) => {
-    try {
-      const { id, seasonNumber } = req.params; // 'id' é o ID da série
-      if (!id || !seasonNumber) {
-        return res.status(400).json({ error: "ID da série e número da temporada são obrigatórios" });
-      }
-      const episodes = await queryDatabase(
-        "SELECT * FROM episodes WHERE series_id = ? AND season_number = ? ORDER BY episode_number ASC",
-        [id, seasonNumber]
-      );
-      return res.json({ episodes });
-    } catch (error) {
-      console.error("Erro ao obter episódios:", error);
-      return res.status(500).json({ error: "Erro interno do servidor" });
+/**
+ * Retorna os episódios de uma série.
+ * Se o query param "season" for fornecido, filtra os episódios daquela temporada;
+ * caso contrário, retorna todos os episódios ordenados por temporada e número.
+ */
+exports.getEpisodes = async (req, res) => {
+  try {
+    const seriesId = req.params.id;
+    const seasonNumber = req.query.season;
+    let queryStr, params;
+    if (seasonNumber) {
+      queryStr = "SELECT id, episode_number, title, created_at FROM episodes WHERE series_id = ? AND season_number = ? ORDER BY episode_number ASC";
+      params = [seriesId, seasonNumber];
+    } else {
+      queryStr = "SELECT id, season_number, episode_number, title, created_at FROM episodes WHERE series_id = ? ORDER BY season_number ASC, episode_number ASC";
+      params = [seriesId];
     }
-  };
-  
+    const episodes = await queryDatabase(queryStr, params);
+    res.json({ episodes });
+  } catch (error) {
+    console.error("Erro ao buscar episódios:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};

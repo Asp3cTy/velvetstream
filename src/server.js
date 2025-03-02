@@ -1,14 +1,6 @@
 const app = require('./app');
-const db = require('./models/db');
+const PORT = process.env.PORT || 3000;
 
-// Inicializar o banco de dados
-db.initializeDatabase()
-  .then(() => {
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando na porta ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error('Erro ao inicializar o banco de dados:', error);
-  });
+app.listen(PORT, () => {
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});

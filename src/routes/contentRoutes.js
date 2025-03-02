@@ -2,20 +2,20 @@ const express = require('express');
 const router = express.Router();
 const contentController = require('../controllers/contentController');
 
-// Rota para listar vídeos da home
+// Página inicial com recomendações
 router.get('/home', contentController.getHomeContent);
 
-// Rota para buscar vídeos por título (usando parâmetro de query "q")
+// Pesquisa por filmes/séries (exemplo: /content/search?query=aventura)
 router.get('/search', contentController.searchContent);
 
-// Rota para obter detalhes de um vídeo específico
+// Detalhes de um filme/série
 router.get('/:id', contentController.getContentDetails);
 
-// Rotas para séries (apenas se houver suporte para temporadas/episódios)
-// Lista as temporadas de uma série
+// Listagem de temporadas de uma série (o id representa o id da série)
 router.get('/:id/seasons', contentController.getSeriesSeasons);
 
-// Lista os episódios de uma temporada específica de uma série
-router.get('/:id/seasons/:seasonNumber/episodes', contentController.getSeasonEpisodes);
+// Listagem de episódios de uma série (opcional: use query param 'season' para filtrar por temporada)
+// Exemplo: /content/:id/episodes?season=2
+router.get('/:id/episodes', contentController.getEpisodes);
 
 module.exports = router;
