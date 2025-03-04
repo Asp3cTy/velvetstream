@@ -29,54 +29,61 @@ Ela fornece endpoints para:
    ```bash
    git clone https://github.com/seu-usuario/velvetstream-api.git
    cd velvetstream-api
-Instale as dependências:
+   ```
 
-bash
-Copiar
-npm install
-Configure as variáveis de ambiente:
+2. **Instale as dependências:**
 
-Crie um arquivo .env na raiz do projeto e defina as seguintes variáveis:
+   ```bash
+   npm install
+   ```
 
-env
-Copiar
-PORT=3000
-NODE_ENV=development
+3. **Configure as variáveis de ambiente:**
 
-# Banco de Dados (Cloudflare D1)
-D1_URL=...
-D1_AUTH=...
+   Crie um arquivo `.env` na raiz do projeto e defina as seguintes variáveis:
 
-# JWT
-JWT_SECRET=...
-JWT_REFRESH_SECRET=...
+   ```env
+   PORT=3000
+   NODE_ENV=development
 
-# Turnstile Cloudflare
-TURNSTILE_SITE_KEY=...
-TURNSTILE_SECRET=...
+   # Banco de Dados (Cloudflare D1)
+   D1_URL=...
+   D1_AUTH=...
 
-# Mercado Pago
-MP_ACCESS_TOKEN=...
+   # JWT
+   JWT_SECRET=...
+   JWT_REFRESH_SECRET=...
 
-# Reset de Senha
-JWT_RESET_SECRET=...
-JWT_RESET_EXPIRES_IN=1h
-3. Execução do Projeto
+   # Turnstile Cloudflare
+   TURNSTILE_SITE_KEY=...
+   TURNSTILE_SECRET=...
+
+   # Mercado Pago
+   MP_ACCESS_TOKEN=...
+
+   # Reset de Senha
+   JWT_RESET_SECRET=...
+   JWT_RESET_EXPIRES_IN=1h
+   ```
+
+## 3. Execução do Projeto
+
 Para rodar em modo de desenvolvimento (usando nodemon):
 
-bash
-Copiar
+```bash
 npm run dev
+```
+
 Para rodar em produção:
 
-bash
-Copiar
+```bash
 npm start
+```
+
 A API estará disponível em http://localhost:3000.
 
-4. Estrutura de Pastas
-kotlin
-Copiar
+## 4. Estrutura de Pastas
+
+```
 velvetstream/
 ├─ src/
 │  ├─ controllers/       # Lógica de cada recurso (Auth, Payment, Player, etc.)
@@ -89,115 +96,129 @@ velvetstream/
 ├─ package.json
 ├─ README.md
 └─ ...
-5. Funcionalidades Principais
-5.1 Autenticação e Conta (/auth)
-POST /auth/register
+```
+
+## 5. Funcionalidades Principais
+
+### 5.1 Autenticação e Conta (`/auth`)
+
+**POST /auth/register**
 Registra um novo usuário.
 Exemplo de Payload:
 
-json
-Copiar
+```json
 {
   "name": "Fulano de Tal",
   "email": "fulano@example.com",
   "password": "suaSenha",
   "cf-turnstile-response": "testToken"
 }
-POST /auth/login
+```
+
+**POST /auth/login**
 Autentica o usuário e retorna accessToken e refreshToken.
 Exemplo de Payload:
 
-json
-Copiar
+```json
 {
   "email": "fulano@example.com",
   "password": "suaSenha",
   "cf-turnstile-response": "testToken"
 }
-POST /auth/refresh-token
+```
+
+**POST /auth/refresh-token**
 Atualiza o accessToken utilizando o refreshToken.
 
-POST /auth/forgot-password
+**POST /auth/forgot-password**
 Gera um token para recuperação de senha.
 Exemplo de Payload:
 
-json
-Copiar
+```json
 { "email": "fulano@example.com" }
-POST /auth/reset-password
+```
+
+**POST /auth/reset-password**
 Reseta a senha utilizando o token de recuperação.
 Exemplo de Payload:
 
-json
-Copiar
+```json
 {
   "token": "<resetToken>",
   "newPassword": "novaSenha"
 }
-DELETE /auth/delete
+```
+
+**DELETE /auth/delete**
 Exclui o usuário (envia o email no payload).
 
-POST /auth/logout
+**POST /auth/logout**
 Realiza o logout (geralmente, o front-end remove o token).
 
-5.2 Conteúdo – Filmes e Séries (/content)
-Filmes (Tabela videos)
-GET /content/movies
+### 5.2 Conteúdo – Filmes e Séries (`/content`)
+
+**Filmes (Tabela videos)**
+
+**GET /content/movies**
 Lista os filmes recentes (ex.: os 10 mais recentes).
 
-GET /content/movies/search?query=...
+**GET /content/movies/search?query=...**
 Pesquisa filmes pelo título.
 
-GET /content/movies/:id
+**GET /content/movies/:id**
 Retorna os detalhes de um filme.
 
-Séries (Tabelas series, seasons e episodes)
-GET /content/series
+**Séries (Tabelas series, seasons e episodes)**
+
+**GET /content/series**
 Lista todas as séries.
 
-GET /content/series/:id
+**GET /content/series/:id**
 Retorna os detalhes de uma série.
 
-GET /content/series/:id/seasons
+**GET /content/series/:id/seasons**
 Lista as temporadas de uma série (realiza JOIN para obter o título da série).
 
-GET /content/series/:id/episodes?season=X
+**GET /content/series/:id/episodes?season=X**
 Lista os episódios da série; se season for especificado, filtra por temporada.
 
-5.3 Player e Streaming (/player)
-GET /player/:id
+### 5.3 Player e Streaming (`/player`)
+
+**GET /player/:id**
 Retorna uma URL segura para o vídeo (gerada via BunnyCDN).
 
-POST /player/progress
+**POST /player/progress**
 Salva o progresso de visualização do usuário (tempo assistido).
 
-GET /player/progress/:id?user_id=...
+**GET /player/progress/:id?user_id=...**
 Retorna o progresso salvo para um vídeo específico.
 
-5.4 Minha Lista (/lists)
-POST /lists
+### 5.4 Minha Lista (`/lists`)
+
+**POST /lists**
 Adiciona um vídeo à lista de favoritos do usuário.
 Exemplo de Payload:
 
-json
-Copiar
+```json
 {
   "user_id": "user123",
   "video_id": "<VIDEO_ID>"
 }
-GET /lists/:user_id
+```
+
+**GET /lists/:user_id**
 Lista todos os vídeos salvos na lista do usuário.
 
-DELETE /lists/:user_id/:video_id
+**DELETE /lists/:user_id/:video_id**
 Remove um vídeo da lista.
 
-5.5 Avaliações e Curtidas (/ratings)
-POST /ratings
+### 5.5 Avaliações e Curtidas (`/ratings`)
+
+**POST /ratings**
 Adiciona ou atualiza uma avaliação para um vídeo.
 Exemplo de Payload:
 
-json
-Copiar
+```json
 {
   "user_id": "user123",
   "video_id": "<VIDEO_ID>",
@@ -205,76 +226,112 @@ Copiar
   "like": true,
   "comment": "Muito bom!"
 }
-GET /ratings/:video_id
+```
+
+**GET /ratings/:video_id**
 Retorna as avaliações e a média de ratings de um vídeo.
 
-5.6 Pagamentos e Assinaturas (/api/payments)
-POST /api/payments/create_preference
+### 5.6 Pagamentos e Assinaturas (`/api/payments`)
+
+**POST /api/payments/create_preference**
 Cria uma preferência de pagamento no Mercado Pago.
-GET /api/payments/success
+
+**GET /api/payments/success**
 Endpoint chamado após pagamento aprovado (atualiza status para "active").
-GET /api/payments/pending
+
+**GET /api/payments/pending**
 Endpoint para pagamentos pendentes.
-GET /api/payments/failure
+
+**GET /api/payments/failure**
 Endpoint para pagamentos falhos.
-POST /api/payments/cancel
+
+**POST /api/payments/cancel**
 Cancela a assinatura (atualiza status para "pending").
-5.7 Painel Administrativo (/admin)
+
+### 5.7 Painel Administrativo (`/admin`)
+
 Protegido por autenticação JWT e RBAC (apenas usuários com role = "admin" podem acessar).
 
-Gerenciamento Geral
-GET /admin/dashboard
+**Gerenciamento Geral**
+
+**GET /admin/dashboard**
 Retorna estatísticas básicas (usuários, filmes, pagamentos).
-GET /admin/users
+
+**GET /admin/users**
 Lista todos os usuários.
-PUT /admin/users/:id
+
+**PUT /admin/users/:id**
 Atualiza a role de um usuário.
-DELETE /admin/users/:id
+
+**DELETE /admin/users/:id**
 Exclui um usuário.
-GET /admin/payments
+
+**GET /admin/payments**
 Lista o histórico de pagamentos.
-PUT /admin/payments/:id
+
+**PUT /admin/payments/:id**
 Atualiza o status de um pagamento.
-Filmes (Admin)
-POST /admin/movies
+
+**Filmes (Admin)**
+
+**POST /admin/movies**
 Cria um novo filme (o campo type deve ser "movie").
-PUT /admin/movies/:id
+
+**PUT /admin/movies/:id**
 Atualiza um filme.
-DELETE /admin/movies/:id
+
+**DELETE /admin/movies/:id**
 Exclui um filme.
-Séries, Temporadas e Episódios (Admin)
-POST /admin/series
+
+**Séries, Temporadas e Episódios (Admin)**
+
+**POST /admin/series**
 Cria uma nova série.
-GET /admin/series
+
+**GET /admin/series**
 Lista todas as séries.
-GET /admin/series/:id
+
+**GET /admin/series/:id**
 Retorna os detalhes de uma série.
-PUT /admin/series/:id
+
+**PUT /admin/series/:id**
 Atualiza uma série.
-DELETE /admin/series/:id
+
+**DELETE /admin/series/:id**
 Exclui uma série (com ON DELETE CASCADE, as temporadas e episódios serão excluídos automaticamente).
-POST /admin/series/:series_id/seasons
+
+**POST /admin/series/:series_id/seasons**
 Cria uma nova temporada para uma série.
-PUT /admin/seasons/:id
+
+**PUT /admin/seasons/:id**
 Atualiza uma temporada.
-DELETE /admin/seasons/:id
+
+**DELETE /admin/seasons/:id**
 Exclui uma temporada.
-POST /admin/seasons/:season_id/episodes
+
+**POST /admin/seasons/:season_id/episodes**
 Cria um novo episódio para uma temporada (a tabela de episódios utiliza season_id como chave estrangeira).
-PUT /admin/episodes/:id
+
+**PUT /admin/episodes/:id**
 Atualiza um episódio.
-DELETE /admin/episodes/:id
+
+**DELETE /admin/episodes/:id**
 Exclui um episódio.
-GET /admin/seasons/:season_id/episodes
+
+**GET /admin/seasons/:season_id/episodes**
 Lista todos os episódios de uma temporada.
-6. Exemplo de Uso com cURL
-6.1 Health Check
-bash
-Copiar
+
+## 6. Exemplo de Uso com cURL
+
+### 6.1 Health Check
+
+```bash
 curl -X GET http://localhost:3000/v1/health
-6.2 Registro de Usuário
-bash
-Copiar
+```
+
+### 6.2 Registro de Usuário
+
+```bash
 curl -X POST http://localhost:3000/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
@@ -283,9 +340,11 @@ curl -X POST http://localhost:3000/v1/auth/register \
     "password": "suaSenha",
     "cf-turnstile-response": "testToken"
   }'
-6.3 Login
-bash
-Copiar
+```
+
+### 6.3 Login
+
+```bash
 curl -X POST http://localhost:3000/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
@@ -293,9 +352,11 @@ curl -X POST http://localhost:3000/v1/auth/login \
     "password": "suaSenha",
     "cf-turnstile-response": "testToken"
   }'
-6.4 Criar Filme (Admin)
-bash
-Copiar
+```
+
+### 6.4 Criar Filme (Admin)
+
+```bash
 curl -X POST http://localhost:3000/v1/admin/movies \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <admin_token>" \
@@ -307,9 +368,11 @@ curl -X POST http://localhost:3000/v1/admin/movies \
     "poster_url": "https://exemplo.com/poster.jpg",
     "video_url": "https://exemplo.com/video.mp4"
   }'
-6.5 Criar Série (Admin)
-bash
-Copiar
+```
+
+### 6.5 Criar Série (Admin)
+
+```bash
 curl -X POST http://localhost:3000/v1/admin/series \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <admin_token>" \
@@ -318,9 +381,11 @@ curl -X POST http://localhost:3000/v1/admin/series \
     "description": "Série de teste",
     "poster_url": "https://exemplo.com/series-poster.jpg"
   }'
-6.6 Criar Temporada para uma Série (Admin)
-bash
-Copiar
+```
+
+### 6.6 Criar Temporada para uma Série (Admin)
+
+```bash
 curl -X POST http://localhost:3000/v1/admin/series/<SERIES_ID>/seasons \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <admin_token>" \
@@ -329,9 +394,11 @@ curl -X POST http://localhost:3000/v1/admin/series/<SERIES_ID>/seasons \
     "title": "Season 1",
     "description": "Descrição da temporada 1"
   }'
-6.7 Criar Episódio para uma Temporada (Admin)
-bash
-Copiar
+```
+
+### 6.7 Criar Episódio para uma Temporada (Admin)
+
+```bash
 curl -X POST http://localhost:3000/v1/admin/seasons/<SEASON_ID>/episodes \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <admin_token>" \
@@ -342,38 +409,39 @@ curl -X POST http://localhost:3000/v1/admin/seasons/<SEASON_ID>/episodes \
     "video_url": "https://exemplo.com/episode1.mp4",
     "duration": 3600
   }'
-6.8 Obter Progresso do Vídeo
-bash
-Copiar
+```
+
+### 6.8 Obter Progresso do Vídeo
+
+```bash
 curl -X GET "http://localhost:3000/v1/player/progress/<VIDEO_ID>?user_id=user123"
-(Substitua <VIDEO_ID>, <SERIES_ID>, <SEASON_ID>, <admin_token>, etc., pelos valores reais.)
+```
 
-7. Segurança e Middlewares
-Autenticação com JWT:
-Todas as rotas protegidas utilizam o middleware authenticateToken que decodifica o token e disponibiliza req.user.
+(Substitua `<VIDEO_ID>`, `<SERIES_ID>`, `<SEASON_ID>`, `<admin_token>`, etc., pelos valores reais.)
 
-RBAC (Admin Only):
-As rotas administrativas utilizam o middleware adminOnly para garantir que apenas usuários com role = "admin" tenham acesso.
+## 7. Segurança e Middlewares
 
-Turnstile Cloudflare:
-Endpoints de autenticação e recuperação de senha são protegidos pelo middleware que valida o cf-turnstile-response.
+**Autenticação com JWT:**
+Todas as rotas protegidas utilizam o middleware `authenticateToken` que decodifica o token e disponibiliza `req.user`.
 
-Rate Limiting e Helmet:
+**RBAC (Admin Only):**
+As rotas administrativas utilizam o middleware `adminOnly` para garantir que apenas usuários com `role = "admin"` tenham acesso.
+
+**Turnstile Cloudflare:**
+Endpoints de autenticação e recuperação de senha são protegidos pelo middleware que valida o `cf-turnstile-response`.
+
+**Rate Limiting e Helmet:**
 São aplicados globalmente para aumentar a segurança da API.
 
-8. Conclusão
+## 8. Conclusão
+
 Esta API permite a criação e gestão de conteúdos (filmes e séries com temporadas e episódios), gerenciamento de usuários e pagamentos, e oferece um painel administrativo completo.
 Com a documentação e exemplos fornecidos, qualquer desenvolvedor (inclusive júnior) pode compreender e integrar a API em qualquer front-end (web, mobile ou desktop).
 
-Contribuição
-Faça um fork deste repositório.
-Crie uma branch para suas alterações.
-Envie um Pull Request com suas contribuições.
-Para reportar bugs ou sugerir melhorias, abra uma issue neste repositório.
-Contato
+## Contribuição
 
+1. Faça um fork deste repositório.
+2. Crie uma branch para suas alterações.
+3. Envie um Pull Request com suas contribuições.
+4. Para reportar bugs ou sugerir melhorias, abra uma issue neste repositório.
 
-
-Esse arquivo README.md foi elaborado para ser claro e didático, com explicações detalhadas sobre cada endpoint e instruções para testes usando cURL, facilitando a compreensão para desenvolvedores iniciantes.
-
-Se precisar de mais alguma alteração ou tiver dúvidas, estou à disposição!
