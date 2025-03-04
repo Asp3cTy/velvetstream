@@ -6,10 +6,10 @@ const verifyTurnstile = require('../middleware/turnstileMiddleware');
 const { loginLimiter } = require('../middleware/rateLimiter');
 
 // Rota de registro com validação do Turnstile
-router.post('/register', authController.register);
+router.post('/register', verifyTurnstile, authController.register);
 
 // Rota de login com validação do Turnstile e rate limiting para login
-router.post('/login', loginLimiter, authController.login);
+router.post('/login', verifyTurnstile, loginLimiter, authController.login);
 
 // Outras rotas já existentes
 router.post('/refresh-token', authController.refreshToken);
