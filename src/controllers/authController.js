@@ -5,12 +5,14 @@ const { v4: uuidv4 } = require('uuid');
 const { queryDatabase } = require('../models/db');
 require('dotenv').config();
 
-function generateAccessToken(userId) {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '15m' });
+// Agora, a função generateAccessToken inclui a role no payload
+function generateAccessToken(userId, role) {
+  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: '15m' });
 }
 
-function generateRefreshToken(userId) {
-  return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+// Opcionalmente, você pode incluir a role também no refreshToken, mas geralmente não é necessário.
+function generateRefreshToken(userId, role) {
+  return jwt.sign({ id: userId, role }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 }
 
 exports.register = async (req, res) => {
@@ -32,12 +34,14 @@ exports.register = async (req, res) => {
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const userId = uuidv4();
+    // Define role "user" para novos registros (você pode atualizar manualmente para "admin" se necessário)
     await queryDatabase(
       "INSERT INTO users (id, name, email, password, role, subscription_status) VALUES (?, ?, ?, ?, ?, ?)",
       [userId, name, email, hashedPassword, 'user', 'pending']
     );
-    const accessToken = generateAccessToken(userId);
-    const refreshToken = generateRefreshToken(userId);
+    // Gera o accessToken incluindo a role. Como o usuário é novo, a role é 'user'
+    const accessToken = generateAccessToken(userId, 'user');
+    const refreshToken = generateRefreshToken(userId, 'user');
     return res.status(201).json({
       message: 'Usuário cadastrado com sucesso',
       accessToken,
@@ -76,8 +80,9 @@ exports.login = async (req, res) => {
       console.log("🔍 [LOGIN] Password mismatch.");
       return res.status(400).json({ error: 'Credenciais inválidas' });
     }
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
+    // Gera o token com a role do usuário
+    const accessToken = generateAccessToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id, user.role);
     return res.json({ accessToken, refreshToken });
   } catch (error) {
     console.error("Erro no login:", error);
@@ -95,7 +100,8 @@ exports.refreshToken = async (req, res) => {
       if (err) {
         return res.status(403).json({ error: 'Token inválido ou expirado' });
       }
-      const newAccessToken = generateAccessToken(decoded.id);
+      // Gera um novo accessToken com a role incluída
+      const newAccessToken = generateAccessToken(decoded.id, decoded.role);
       return res.json({ accessToken: newAccessToken });
     });
   } catch (error) {

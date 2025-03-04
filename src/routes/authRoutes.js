@@ -1,16 +1,23 @@
+// authRoutes.js
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const verifyTurnstile = require('../middleware/turnstileMiddleware');
+const { loginLimiter } = require('../middleware/rateLimiter');
 
+// Rota de registro com validação do Turnstile
 router.post('/register', authController.register);
-router.post('/login', authController.login);
+
+// Rota de login com validação do Turnstile e rate limiting para login
+router.post('/login', loginLimiter, authController.login);
+
+// Outras rotas já existentes
 router.post('/refresh-token', authController.refreshToken);
 router.delete('/delete', authController.delete);
-// Rota de logout (simples)
 router.post('/logout', authController.logout);
 
-// Nova rota para recuperação de senha
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+// Rotas para recuperação de senha
+router.post('/forgot-password', verifyTurnstile, authController.forgotPassword);
+router.post('/reset-password', verifyTurnstile, authController.resetPassword);
 
 module.exports = router;

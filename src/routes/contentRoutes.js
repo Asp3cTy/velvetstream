@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const contentController = require('../controllers/contentController');
 
-// Página inicial com recomendações
-router.get('/home', contentController.getHomeContent);
+const moviesController = require('../controllers/moviesController');
+const seriesController = require('../controllers/seriesController');
 
-// Pesquisa por filmes/séries (exemplo: /content/search?query=aventura)
-router.get('/search', contentController.searchContent);
+// Endpoints para Filmes
+router.get('/movies', moviesController.getHomeMovies);        // Lista os filmes (home)
+router.get('/movies/search', moviesController.searchMovies);    // Pesquisa filmes
+router.get('/movies/:id', moviesController.getMovieDetails);      // Detalhes de um filme
 
-// Detalhes de um filme/série
-router.get('/:id', contentController.getContentDetails);
+// Endpoints para Séries
+router.get('/series', seriesController.getSeries);              // Lista todas as séries
+router.get('/series/:id', seriesController.getSeriesDetails);     // Detalhes de uma série
+router.get('/series/:id/seasons', seriesController.getSeriesSeasons); // Temporadas da série
+router.get('/series/:id/episodes', seriesController.getEpisodes); // Episódios da série (opcionalmente com ?season=)
 
-// Listagem de temporadas de uma série (o id representa o id da série)
-router.get('/:id/seasons', contentController.getSeriesSeasons);
-
-// Listagem de episódios de uma série (opcional: use query param 'season' para filtrar por temporada)
-// Exemplo: /content/:id/episodes?season=2
-router.get('/:id/episodes', contentController.getEpisodes);
+// Você pode manter também o endpoint /home, se desejar, para exibir recomendações gerais (filmes ou ambos)
+router.get('/home', moviesController.getHomeMovies);
 
 module.exports = router;
